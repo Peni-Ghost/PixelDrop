@@ -1,4 +1,4 @@
-import { Handler, schedule } from '@netlify/functions';
+import { Handler } from '@netlify/functions';
 import { PrismaClient, PostStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -8,6 +8,7 @@ const handler: Handler = async (event, context) => {
   if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
     return { 
       statusCode: 405, 
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Method not allowed' }) 
     };
   }
@@ -22,6 +23,7 @@ const handler: Handler = async (event, context) => {
     
     return {
       statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         success: true,
         deletedCount: result.count,
@@ -32,6 +34,7 @@ const handler: Handler = async (event, context) => {
     console.error('Cleanup error:', error);
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: error.message }),
     };
   } finally {
@@ -39,8 +42,4 @@ const handler: Handler = async (event, context) => {
   }
 };
 
-// Export for Netlify scheduled functions (requires paid plan)
-export const scheduledHandler = schedule('0 0 * * 0', handler);
-
-// Also export as default for HTTP requests (for cron-job.org)
 export { handler as default };
