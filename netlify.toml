@@ -1,6 +1,15 @@
 [build]
-  command = "npm run build"
+  command = "npm install && prisma generate && next build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Scheduled Functions (Note: Requires Netlify paid plan for actual scheduling)
+# These will also be available as regular HTTP endpoints for testing

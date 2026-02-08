@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@netlify/functions": "^2.8.2",
     "@prisma/client": "^5.11.0",
     "autoprefixer": "^10.4.24",
     "cloudinary": "^2.9.0",
