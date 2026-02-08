@@ -1,7 +1,6 @@
 import { Handler } from '@netlify/functions';
-import { PrismaClient, PostStatus } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../src/lib/prisma';
+import { PostStatus } from '@prisma/client';
 
 const handler: Handler = async (event, context) => {
   // Accept both GET and POST for cron-job.org compatibility
@@ -37,8 +36,6 @@ const handler: Handler = async (event, context) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: error.message }),
     };
-  } finally {
-    await prisma.$disconnect();
   }
 };
 
