@@ -6,18 +6,19 @@ redirectsOrigin = "inline"
 [functions."*"]
 
 [[plugins]]
-origin = "default"
+origin = "config"
 package = "@netlify/plugin-nextjs"
 
 [plugins.inputs]
 
 [build]
-publish = "/root/.openclaw/workspace/content-flow/.next"
-publishOrigin = "ui"
-commandOrigin = "ui"
+publish = "/root/.openclaw/workspace/pixeldrop/.next"
+publishOrigin = "config"
+commandOrigin = "config"
 command = "npm run build"
 
 [build.environment]
+NODE_VERSION = "20"
 
 [build.processing]
 

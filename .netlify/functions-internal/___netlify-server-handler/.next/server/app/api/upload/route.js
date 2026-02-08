@@ -1,5 +1,5 @@
 var R=require("../../../chunks/[turbopack]_runtime.js")("server/app/api/upload/route.js")
-R.c("server/chunks/[externals]__3a6cad27._.js")
+R.c("server/chunks/[externals]__cf2ccb51._.js")
 R.c("server/chunks/[root-of-the-server]__2b3b4ac7._.js")
 R.c("server/chunks/[root-of-the-server]__f408c708._.js")
 R.c("server/chunks/_next-internal_server_app_api_upload_route_actions_f15ed185.js")

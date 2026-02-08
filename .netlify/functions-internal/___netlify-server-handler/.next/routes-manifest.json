@@ -20,7 +20,16 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/api/assets/[id]",
+      "regex": "^/api/assets/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/assets/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -47,10 +56,28 @@
       "namedRegex": "^/api/assets(?:/)?$"
     },
     {
+      "page": "/api/config",
+      "regex": "^/api/config(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/config(?:/)?$"
+    },
+    {
+      "page": "/api/scheduler/post",
+      "regex": "^/api/scheduler/post(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/scheduler/post(?:/)?$"
+    },
+    {
       "page": "/api/upload",
       "regex": "^/api/upload(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/upload(?:/)?$"
+    },
+    {
+      "page": "/settings",
+      "regex": "^/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/settings(?:/)?$"
     }
   ],
   "dataRoutes": [],

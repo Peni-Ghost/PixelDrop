@@ -17,7 +17,17 @@ model Asset {
   format    String
   width     Int
   height    Int
+  caption   String?
   status    String   @default("available") // available, scheduled, posted
   createdAt DateTime @default(now())
   postedAt  DateTime?
+  scheduledFor DateTime?
+}
+
+model Config {
+  id                String   @id @default(cuid())
+  telegramBotToken  String?
+  telegramChannelId String?
+  postTime          String   @default("09:00")
+  updatedAt         DateTime @updatedAt
 }

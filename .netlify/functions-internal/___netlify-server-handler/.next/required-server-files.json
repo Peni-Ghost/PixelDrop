@@ -67,7 +67,7 @@
       "qualities": [
         75
       ],
-      "unoptimized": false
+      "unoptimized": true
     },
     "devIndicators": {
       "position": "bottom-left"
@@ -101,7 +101,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/root/.openclaw/workspace/content-flow",
+    "outputFileTracingRoot": "/root/.openclaw/workspace/pixeldrop",
     "cacheComponents": false,
     "cacheLife": {
       "default": {
@@ -294,11 +294,11 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/root/.openclaw/workspace/content-flow"
+      "root": "/root/.openclaw/workspace/pixeldrop"
     },
     "distDirRoot": ".next"
   },
-  "appDir": "/root/.openclaw/workspace/content-flow",
+  "appDir": "/root/.openclaw/workspace/pixeldrop",
   "relativeAppDir": "",
   "files": [
     ".next/routes-manifest.json",
