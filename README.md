@@ -1,36 +1,178 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PixelDrop 🎯
 
-## Getting Started
+A content pipeline and auto-scheduler for design assets. Upload images, add captions, and automatically post them to Telegram daily.
 
-First, run the development server:
+## Features
+
+- 📤 **Drag & Drop Upload** — Images go to Cloudinary, metadata to Postgres
+- ✏️ **Caption Management** — Add and edit captions per asset
+- 🤖 **Telegram Integration** — Auto-post to your Telegram channel
+- ⏰ **Daily Scheduling** — Configurable post time (default: 09:00 UTC)
+- 📊 **Pipeline Dashboard** — Track available, scheduled, and posted assets
+- 🔧 **Manual Posting** — Post immediately with one click
+
+## Tech Stack
+
+- **Framework:** Next.js 16 + React 19 + TypeScript
+- **Styling:** Tailwind CSS 4
+- **Database:** PostgreSQL + Prisma ORM
+- **Media:** Cloudinary
+- **Deployment:** Netlify
+
+## Setup
+
+### 1. Environment Variables
+
+Copy `.env.local.example` to `.env.local` and fill in:
+
+```bash
+# Database (provided)
+DATABASE_URL="postgres://..."
+
+# Cloudinary
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="749686221242924"
+CLOUDINARY_API_SECRET="TvTI83dgJm-QqijtQSrIY3Yvoe8"
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN="123456789:ABC..."
+TELEGRAM_CHANNEL_ID="@yourchannel" or "-1001234567890"
+
+# Schedule
+POST_TIME="09:00"  # 24h UTC format
+
+# Optional: Protect scheduler endpoint
+CRON_SECRET="random-secret-string"
+```
+
+### 2. Telegram Bot Setup
+
+1. Message [@BotFather](https://t.me/botfather) on Telegram
+2. Create a new bot (`/newbot`)
+3. Copy the bot token
+4. Add the bot to your channel as an admin
+5. Get your channel ID (use [@userinfobot](https://t.me/userinfobot) or just use `@channelname`)
+
+### 3. Database
+
+```bash
+npx prisma db push
+```
+
+### 4. Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 5. Daily Scheduler
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To enable automatic daily posting, set up a cron job to hit:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+POST https://your-domain.com/api/scheduler/post
+Authorization: Bearer YOUR_CRON_SECRET
+```
 
-## Learn More
+**Using GitHub Actions** (free):
 
-To learn more about Next.js, take a look at the following resources:
+Create `.github/workflows/scheduler.yml`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```yaml
+name: Daily PixelDrop Post
+on:
+  schedule:
+    - cron: '0 9 * * *'  # 9:00 AM UTC daily
+  workflow_dispatch:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -X POST https://your-domain.com/api/scheduler/post \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+```
 
-## Deploy on Vercel
+**Using Netlify Scheduled Functions** (paid):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Add to `netlify.toml`:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```toml
+[functions]
+  schedule = "@daily"
+```
+
+**Using cron-job.org** (free):
+
+1. Go to [cron-job.org](https://cron-job.org)
+2. Create a new job
+3. URL: `https://your-domain.com/api/scheduler/post`
+4. Method: POST
+5. Header: `Authorization: Bearer your-cron-secret`
+
+## Usage
+
+1. **Upload** — Drag images or click to upload
+2. **Caption** — Click the edit icon on any asset to add a caption
+3. **Configure** — Go to Settings, add your Telegram bot token and channel
+4. **Test** — Hit "Test Post" to verify Telegram connection
+5. **Schedule** — Set up the daily cron job (or post manually)
+
+## Project Structure
+
+```
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── assets/        # CRUD for assets
+│   │   │   ├── config/        # Settings storage
+│   │   │   ├── scheduler/     # Posting logic
+│   │   │   └── upload/        # Cloudinary upload
+│   │   ├── page.tsx           # Main dashboard
+│   │   └── settings/          # Configuration page
+│   ├── components/
+│   │   └── Uploader.tsx       # Upload component
+│   └── lib/
+│       ├── prisma.ts          # Database client
+│       └── telegram.ts        # Telegram API
+├── prisma/
+│   └── schema.prisma          # Database schema
+```
+
+## Schema
+
+```prisma
+model Asset {
+  id           String   @id @default(cuid())
+  url          String
+  publicId     String   @unique
+  format       String
+  width        Int
+  height       Int
+  caption      String?
+  status       String   @default("available") // available, scheduled, posted
+  createdAt    DateTime @default(now())
+  postedAt     DateTime?
+}
+
+model Config {
+  id                String   @id @default(cuid())
+  telegramBotToken  String?
+  telegramChannelId String?
+  postTime          String   @default("09:00")
+  updatedAt         DateTime @updatedAt
+}
+```
+
+## Roadmap
+
+- [ ] Bulk upload
+- [ ] Queue reordering (drag & drop)
+- [ ] Post history/analytics
+- [ ] Multi-platform (Twitter/X, LinkedIn, Instagram when APIs allow)
+- [ ] Schedule individual posts (not just daily)
+
+## License
+
+MIT
