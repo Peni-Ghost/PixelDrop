@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import { Upload, Loader, ImagePlus } from 'lucide-react';
+import { Upload, Loader2, ImagePlus } from 'lucide-react';
 
 export default function Uploader({ onUploadComplete }: { onUploadComplete: () => void }) {
   const [uploading, setUploading] = useState(false);
@@ -19,7 +19,6 @@ export default function Uploader({ onUploadComplete }: { onUploadComplete: () =>
     formData.append('file', file);
 
     try {
-      // 1. Upload to Cloudinary
       const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -31,7 +30,6 @@ export default function Uploader({ onUploadComplete }: { onUploadComplete: () =>
       
       const data = await uploadRes.json();
 
-      // 2. Save to DB
       const saveRes = await fetch('/api/assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,52 +86,52 @@ export default function Uploader({ onUploadComplete }: { onUploadComplete: () =>
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
+      className="relative"
     >
       <label
         className={`
-          relative flex flex-col items-center justify-center gap-4 
-          p-8 rounded-xl border-2 border-dashed 
+          relative flex items-center gap-4 
+          px-2 py-2 rounded-2xl border
           transition-all duration-200 cursor-pointer
-          min-h-[180px]
           ${dragActive 
-            ? 'border-blue-500 bg-blue-500/10' 
-            : 'border-gray-600 bg-gray-800/30 hover:border-gray-500 hover:bg-gray-800/50'
+            ? 'border-cyan-500 bg-cyan-500/10 shadow-lg shadow-cyan-500/20' 
+            : 'border-gray-700 bg-gray-900/80 hover:border-gray-600'
           }
           ${uploading ? 'pointer-events-none opacity-70' : ''}
         `}
       >
-        {uploading ? (
-          <>
-            <div className="relative">
-              <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-              <Loader className="w-6 h-6 text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-            </div>
-            <div className="text-center">
-              <p className="text-gray-300 font-medium">Uploading...</p>
-              <p className="text-gray-500 text-sm mt-1">Sending to Cloudinary</p>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className={`
-              w-14 h-14 rounded-2xl flex items-center justify-center
-              transition-colors duration-200
-              ${dragActive ? 'bg-blue-500/20' : 'bg-gray-700/50'}
-            `}>
-              {dragActive ? (
-                <ImagePlus className="w-7 h-7 text-blue-400" />
-              ) : (
-                <Upload className="w-7 h-7 text-gray-400" />
-              )}
-            </div>
-            <div className="text-center">
-              <p className="text-gray-300 font-medium">
-                {dragActive ? 'Drop image here' : 'Drop image or click to upload'}
-              </p>
-              <p className="text-gray-500 text-sm mt-1">PNG, JPG, GIF up to 10MB</p>
-            </div>
-          </>
-        )}
+        <div className={`
+          flex-1 flex items-center gap-3 px-4 py-3 rounded-xl
+          ${dragActive ? 'text-cyan-300' : 'text-gray-400'}
+        `}>
+          {uploading ? (
+            <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+          ) : (
+            <Upload className="w-5 h-5" />
+          )}
+          <span className="text-sm font-medium">
+            {uploading ? 'Uploading to Cloudinary...' : dragActive ? 'Drop image here' : 'Click or drag image to upload'}
+          </span>
+        </div>
+        
+        <button
+          type="button"
+          disabled={uploading}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 disabled:opacity-50 transition-all font-medium text-sm shadow-lg shadow-cyan-500/25 flex items-center gap-2"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Uploading
+            </>
+          ) : (
+            <>
+              <ImagePlus className="w-4 h-4" />
+              Upload
+            </>
+          )}
+        </button>
+        
         <input
           type="file"
           className="hidden"
