@@ -4,6 +4,14 @@ import { PrismaClient, PostStatus } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const handler: Handler = async (event, context) => {
+  // Accept both GET and POST for cron-job.org compatibility
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
+    return { 
+      statusCode: 405, 
+      body: JSON.stringify({ error: 'Method not allowed' }) 
+    };
+  }
+
   try {
     // Delete all SENT posts
     const result = await prisma.post.deleteMany({
@@ -17,6 +25,7 @@ const handler: Handler = async (event, context) => {
       body: JSON.stringify({
         success: true,
         deletedCount: result.count,
+        message: `Deleted ${result.count} sent posts`,
       }),
     };
   } catch (error: any) {
@@ -30,5 +39,8 @@ const handler: Handler = async (event, context) => {
   }
 };
 
-// Schedule: Run every Sunday at 12:00 AM UTC
+// Export for Netlify scheduled functions (requires paid plan)
 export const scheduledHandler = schedule('0 0 * * 0', handler);
+
+// Also export as default for HTTP requests (for cron-job.org)
+export { handler as default };

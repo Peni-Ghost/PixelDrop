@@ -4,13 +4,24 @@ import { PrismaClient, PostStatus } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const handler: Handler = async (event, context) => {
+  // Accept both GET and POST for cron-job.org compatibility
+  if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
+    return { 
+      statusCode: 405, 
+      body: JSON.stringify({ error: 'Method not allowed' }) 
+    };
+  }
+
   try {
     // Get config for Telegram
     const config = await prisma.config.findFirst();
     
     if (!config?.telegramBotToken || !config?.telegramChannelId) {
       console.log('Telegram not configured');
-      return { statusCode: 200, body: 'Telegram not configured' };
+      return { 
+        statusCode: 200, 
+        body: JSON.stringify({ message: 'Telegram not configured' }) 
+      };
     }
 
     // Find oldest PENDING post
@@ -21,7 +32,10 @@ const handler: Handler = async (event, context) => {
 
     if (!post) {
       console.log('No pending posts to send');
-      return { statusCode: 200, body: 'No pending posts' };
+      return { 
+        statusCode: 200, 
+        body: JSON.stringify({ message: 'No pending posts' }) 
+      };
     }
 
     // Send to Telegram
@@ -77,5 +91,8 @@ const handler: Handler = async (event, context) => {
   }
 };
 
-// Schedule: Run every day at 9:00 AM UTC
+// Export for Netlify scheduled functions (requires paid plan)
 export const scheduledHandler = schedule('0 9 * * *', handler);
+
+// Also export as default for HTTP requests (for cron-job.org)
+export { handler as default };
