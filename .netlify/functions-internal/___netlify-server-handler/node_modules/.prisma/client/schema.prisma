@@ -1,0 +1,23 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  url       String
+  publicId  String   @unique
+  format    String
+  width     Int
+  height    Int
+  status    String   @default("available") // available, scheduled, posted
+  createdAt DateTime @default(now())
+  postedAt  DateTime?
+}
