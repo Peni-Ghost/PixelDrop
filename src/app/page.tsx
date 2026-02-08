@@ -12,7 +12,8 @@ import {
   Settings,
   Calendar,
   MoreHorizontal,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -234,15 +235,20 @@ export default function Home() {
                       )}
 
                       {/* Actions */}
-                      <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-3 right-3 flex gap-2">
                         {asset.status === 'available' && (
                           <button
                             onClick={() => postNow(asset)}
                             disabled={postingId === asset.id}
-                            className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                            title="Post now"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition-colors text-xs font-medium shadow-lg shadow-blue-500/20"
+                            title="Post to Telegram"
                           >
-                            <Send className="w-4 h-4" />
+                            {postingId === asset.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Send className="w-3.5 h-3.5" />
+                            )}
+                            Post
                           </button>
                         )}
                         <button
@@ -286,7 +292,7 @@ export default function Home() {
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-sm text-gray-300 line-clamp-3 flex-1">
                             {asset.caption || (
-                              <span className="text-gray-500 italic">No caption</span>
+                              <span className="text-gray-500 italic">Click edit to add caption...</span>
                             )}
                           </p>
                           <button
@@ -294,9 +300,10 @@ export default function Home() {
                               setEditingId(asset.id);
                               setEditCaption(asset.caption || '');
                             }}
-                            className="p-1.5 rounded-lg hover:bg-gray-700/50 transition-colors opacity-0 group-hover:opacity-100"
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors text-xs text-gray-400"
                           >
-                            <Edit3 className="w-4 h-4 text-gray-400" />
+                            <Edit3 className="w-3.5 h-3.5" />
+                            Edit
                           </button>
                         </div>
                       )}
