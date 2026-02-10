@@ -32,16 +32,30 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
+    setTestResult(null);
+    
+    // Validate: don't allow bot usernames as channel IDs
+    if (channelId && channelId.toLowerCase().includes('bot')) {
+      setTestResult({ 
+        success: false, 
+        message: 'Invalid Channel ID: Cannot use bot username as channel ID. Leave empty to use default (5987629480).' 
+      });
+      setSaving(false);
+      return;
+    }
     
     try {
-      // Only send botToken if user entered a new one (not the placeholder)
-      const payload: { telegramBotToken?: string; telegramChannelId: string } = {
-        telegramChannelId: channelId,
-      };
+      // If channelId is empty, it will use the default on the server
+      const payload: { telegramBotToken?: string; telegramChannelId?: string } = {};
       
-      // If botToken is not the placeholder, include it
+      // Only send botToken if user entered a new one (not the placeholder)
       if (botToken && !botToken.startsWith('•')) {
         payload.telegramBotToken = botToken;
+      }
+      
+      // Only send channelId if it's not empty
+      if (channelId.trim()) {
+        payload.telegramChannelId = channelId.trim();
       }
       
       const res = await fetch('/api/config', {
@@ -197,6 +211,14 @@ export default function SettingsPage() {
                   <Send className="w-4 h-4" />
                 )}
                 <span className="text-sm">Test Connection</span>
+              </button>
+
+              <button
+                onClick={() => setChannelId('')}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors text-sm text-slate-400"
+                title="Reset to default channel ID (5987629480)"
+              >
+                Reset to Default
               </button>
 
               <button

@@ -47,9 +47,19 @@ export async function POST(req: NextRequest) {
     let config;
     if (existing) {
       // Only update fields that are provided
-      const updateData: { telegramBotToken?: string; telegramChannelId?: string } = {};
-      if (telegramBotToken !== undefined) updateData.telegramBotToken = telegramBotToken;
-      if (telegramChannelId !== undefined) updateData.telegramChannelId = telegramChannelId;
+      const updateData: { telegramBotToken?: string | null; telegramChannelId?: string | null } = {};
+      
+      // If bot token is provided (even empty string), update it
+      if (telegramBotToken !== undefined) {
+        updateData.telegramBotToken = telegramBotToken || null;
+      }
+      
+      // If channel ID is provided:
+      // - empty string/null means "use default" (set to null in DB)
+      // - non-empty string means custom channel
+      if (telegramChannelId !== undefined) {
+        updateData.telegramChannelId = telegramChannelId?.trim() || null;
+      }
       
       config = await prisma.config.update({
         where: { id: existing.id },
@@ -59,7 +69,7 @@ export async function POST(req: NextRequest) {
       config = await prisma.config.create({
         data: { 
           telegramBotToken: telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || '',
-          telegramChannelId: telegramChannelId || process.env.TELEGRAM_CHANNEL_ID || '',
+          telegramChannelId: telegramChannelId?.trim() || null,
         },
       });
     }
