@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import { 
@@ -10,7 +10,11 @@ import {
   Loader2,
   ImageIcon,
   Settings,
-  Plus
+  Plus,
+  Play,
+  CheckSquare,
+  Square,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,6 +32,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState('');
+  const [posting, setPosting] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchPosts = async () => {
     try {
@@ -50,7 +59,6 @@ export default function Dashboard() {
     setUploading(true);
 
     try {
-      // Upload to Cloudinary
       const formData = new FormData();
       formData.append('file', file);
 
@@ -63,7 +71,6 @@ export default function Dashboard() {
       
       const uploadData = await uploadRes.json();
 
-      // Create post in DB
       await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,17 +82,118 @@ export default function Dashboard() {
 
       setCaption('');
       fetchPosts();
-    } catch (error) {
+    } catch {
       alert('Upload failed');
     } finally {
       setUploading(false);
     }
   };
 
+  const handlePostNow = async () => {
+    setPosting(true);
+    try {
+      const res = await fetch('/api/scheduler', {
+        method: 'POST',
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        if (data.failed > 0) {
+          alert(`Posted ${data.posted} images, ${data.failed} failed. Check console for details.`);
+        } else {
+          alert(`Successfully posted ${data.posted} image${data.posted !== 1 ? 's' : ''}!`);
+        }
+        fetchPosts();
+      } else {
+        alert(data.error || 'Failed to post');
+      }
+    } catch {
+      alert('Failed to post - network error');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this post?')) return;
+    
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/posts?id=${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        fetchPosts();
+      } else {
+        alert('Failed to delete');
+      }
+    } catch {
+      alert('Failed to delete');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedPosts);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedPosts(newSelected);
+  };
+
+  const selectAll = () => {
+    const deletablePosts = posts; // Allow selecting all posts for deletion
+    if (selectedPosts.size === deletablePosts.length) {
+      setSelectedPosts(new Set());
+    } else {
+      setSelectedPosts(new Set(deletablePosts.map(p => p.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPosts.size === 0) return;
+    if (!confirm(`Delete ${selectedPosts.size} posts? This cannot be undone.`)) return;
+
+    setBulkDeleting(true);
+    try {
+      const res = await fetch('/api/posts/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedPosts) }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedPosts(new Set());
+        setSelectMode(false);
+        fetchPosts();
+        alert(`Deleted ${data.deleted} posts`);
+      } else {
+        alert('Failed to delete posts');
+      }
+    } catch {
+      alert('Failed to delete posts');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedPosts(new Set());
+  };
+
   const stats = {
     pending: posts.filter(p => p.status === 'PENDING').length,
     sent: posts.filter(p => p.status === 'SENT').length,
   };
+
+  const allSelected = posts.length > 0 && selectedPosts.size === posts.length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -98,8 +206,8 @@ export default function Dashboard() {
                 <Send className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
-                <h1 className="font-bold text-lg text-slate-100">Social Scheduler</h1>
-                <p className="text-slate-500 text-sm">Automated Telegram Posts</p>
+                <h1 className="font-bold text-lg text-slate-100">PixelDrop</h1>
+                <p className="text-slate-500 text-sm">Content Pipeline</p>
               </div>
             </div>
 
@@ -173,6 +281,75 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Actions */}
+        {stats.pending > 0 && !selectMode && (
+          <div className="flex gap-3 mb-6">
+            <button
+              onClick={handlePostNow}
+              disabled={posting}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-medium transition-colors disabled:opacity-50"
+            >
+              {posting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              <span className="text-sm">Post Now</span>
+            </button>
+            
+            <button
+              onClick={() => setSelectMode(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+            >
+              <CheckSquare className="w-4 h-4" />
+              <span className="text-sm">Select</span>
+            </button>
+          </div>
+        )}
+
+        {/* Bulk Actions Bar */}
+        {selectMode && (
+          <div className="flex items-center gap-3 mb-6 p-4 bg-slate-900/80 border border-slate-700 rounded-xl">
+            <button
+              onClick={selectAll}
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-slate-100 transition-colors"
+            >
+              {allSelected ? <CheckSquare className="w-5 h-5 text-emerald-400" /> : <Square className="w-5 h-5" />}
+              <span>Select All ({posts.length})</span>
+            </button>
+            
+            <span className="text-slate-600">|</span>
+            
+            <span className="text-sm text-slate-400">
+              {selectedPosts.size} selected
+            </span>
+
+            <div className="ml-auto flex gap-3">
+              {selectedPosts.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors disabled:opacity-50"
+                >
+                  {bulkDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">Delete ({selectedPosts.size})</span>
+                </button>
+              )}
+              
+              <button
+                onClick={exitSelectMode}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Queue List */}
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -196,7 +373,11 @@ export default function Dashboard() {
               {posts.map((post) => (
                 <div
                   key={post.id}
-                  className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden group"
+                  className={`bg-slate-900/50 border rounded-2xl overflow-hidden group transition-all ${
+                    selectedPosts.has(post.id) 
+                      ? 'border-emerald-500/50 ring-2 ring-emerald-500/20' 
+                      : 'border-slate-800'
+                  }`}
                 >
                   <div className="aspect-square relative">
                     <img
@@ -206,8 +387,22 @@ export default function Dashboard() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
 
+                    {/* Selection Checkbox */}
+                    {selectMode && (
+                      <button
+                        onClick={() => toggleSelect(post.id)}
+                        className="absolute top-3 left-3 p-1.5 rounded-lg bg-slate-950/80 border border-slate-600 hover:border-emerald-500 transition-colors z-10"
+                      >
+                        {selectedPosts.has(post.id) ? (
+                          <CheckSquare className="w-5 h-5 text-emerald-400" />
+                        ) : (
+                          <Square className="w-5 h-5 text-slate-400" />
+                        )}
+                      </button>
+                    )}
+
                     {/* Status Badge */}
-                    <div className="absolute top-3 left-3">
+                    <div className={`absolute ${selectMode ? 'top-3 left-14' : 'top-3 left-3'}`}>
                       {post.status === 'PENDING' ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                           <Clock className="w-3 h-3" />
@@ -220,6 +415,21 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
+
+                    {/* Single Delete Button */}
+                    {!selectMode && (
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        disabled={deleting === post.id}
+                        className="absolute top-3 right-3 p-2 rounded-lg bg-slate-950/80 hover:bg-red-500/20 border border-slate-700 hover:border-red-500/50 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        {deleting === post.id ? (
+                          <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-400" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   <div className="p-4">
