@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   const handleBulkPost = async () => {
     if (selectedPosts.size === 0) return;
-    if (!confirm(`Post ${selectedPosts.size} selected images?`)) return;
+    if (!confirm(`Post ${selectedPendingCount} selected images?`)) return;
 
     setBulkPosting(true);
     try {
@@ -55,7 +55,8 @@ export default function Dashboard() {
       
       if (res.ok) {
         if (data.failed > 0) {
-          alert(`Posted ${data.posted} images, ${data.failed} failed.`);
+          const failedErrors = data.results?.failed?.map((f: {id: string, error: string}) => f.error).join('\n');
+          alert(`Posted ${data.posted} images, ${data.failed} failed.\n\nErrors:\n${failedErrors || 'Unknown error'}`);
         } else {
           alert(`Successfully posted ${data.posted} image${data.posted !== 1 ? 's' : ''}!`);
         }
@@ -134,7 +135,8 @@ export default function Dashboard() {
       
       if (res.ok) {
         if (data.failed > 0) {
-          alert(`Posted ${data.posted} images, ${data.failed} failed. Check console for details.`);
+          const failedErrors = data.results?.failed?.map((f: {id: string, error: string}) => f.error).join('\n');
+          alert(`Posted ${data.posted} images, ${data.failed} failed.\n\nErrors:\n${failedErrors || 'Unknown error'}`);
         } else {
           alert(`Successfully posted ${data.posted} image${data.posted !== 1 ? 's' : ''}!`);
         }
