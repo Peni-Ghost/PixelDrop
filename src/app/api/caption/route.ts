@@ -119,14 +119,17 @@ function extractKeywords(fileName?: string): {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { imageUrl, fileName, platform = 'all' } = body;
+    const { imageUrl, fileName, platform = 'all', category: forcedCategory } = body;
 
     if (!imageUrl) {
       return NextResponse.json({ error: 'Image URL required' }, { status: 400 });
     }
 
     // Extract keywords and determine template
-    const { category, placeholders } = extractKeywords(fileName);
+    const { category: detectedCategory, placeholders } = extractKeywords(fileName);
+    
+    // Use forced category if provided, otherwise use detected
+    const category = forcedCategory || detectedCategory;
     
     // Get templates for this category
     const templates = getTemplatesByCategory(category as any);

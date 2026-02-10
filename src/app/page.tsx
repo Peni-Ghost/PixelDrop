@@ -93,13 +93,20 @@ export default function Dashboard() {
     fetchPosts();
   }, []);
 
-  const generateCaption = async (imageUrl: string, fileName?: string, selectedPlatform?: string): Promise<Record<string, string> | null> => {
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  const generateCaption = async (imageUrl: string, fileName?: string, category?: string) => {
     setGeneratingCaption(true);
     try {
       const res = await fetch('/api/caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl, fileName, platform: selectedPlatform || platform }),
+        body: JSON.stringify({ 
+          imageUrl, 
+          fileName, 
+          platform: platform,
+          category: category || selectedCategory || undefined
+        }),
       });
 
       if (res.ok) {
@@ -107,6 +114,9 @@ export default function Dashboard() {
         setGeneratedCaptions(data.captions);
         const activeCaption = data.captions[data.activePlatform] || data.captions.full;
         setCaption(activeCaption);
+        if (data.metadata?.category) {
+          setSelectedCategory(data.metadata.category);
+        }
         return data.captions;
       }
     } catch {
@@ -153,6 +163,7 @@ export default function Dashboard() {
 
       setCaption('');
       setGeneratedCaptions(null);
+      setSelectedCategory('');
       setUploadedImageUrl(null);
       setUploadedFileName(null);
       fetchPosts();
@@ -319,6 +330,31 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
+            {/* Category Selector */}
+            {generatedCaptions && (
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-xs text-slate-500 self-center mr-2">Template:</span>
+                {(['product', 'promotion', 'engagement', 'seasonal', 'milestone', 'educational'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      if (uploadedImageUrl) {
+                        generateCaption(uploadedImageUrl, uploadedFileName || undefined, cat);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${
+                      selectedCategory === cat
+                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Platform Selector */}
             {generatedCaptions && (
               <div className="flex gap-2 flex-wrap">
