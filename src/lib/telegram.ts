@@ -28,7 +28,20 @@ export async function sendTelegramMessage({
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.description || 'Failed to send Telegram message');
+    const description = error.description || 'Failed to send Telegram message';
+    
+    // Make error messages more user-friendly
+    if (description.includes('failed to get HTTP URL content')) {
+      throw new Error('Image URL expired or invalid. Please re-upload the image.');
+    }
+    if (description.includes('chat not found')) {
+      throw new Error('Chat not found. Make sure you clicked START on the bot and the Channel ID is correct.');
+    }
+    if (description.includes('bot was blocked')) {
+      throw new Error('Bot was blocked. Please unblock @peni_pixeldrop_bot in Telegram.');
+    }
+    
+    throw new Error(description);
   }
 }
 
