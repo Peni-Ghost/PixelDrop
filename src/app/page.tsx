@@ -156,12 +156,14 @@ export default function Dashboard() {
     return null;
   };
 
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
+  const [pendingFileName, setPendingFileName] = useState<string | null>(null);
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    setUploadedFileName(file.name);
 
     try {
       const formData = new FormData();
@@ -175,21 +177,35 @@ export default function Dashboard() {
       if (!uploadRes.ok) throw new Error('Upload failed');
       
       const uploadData = await uploadRes.json();
+      setPendingImageUrl(uploadData.secure_url);
+      setPendingFileName(file.name);
       setUploadedImageUrl(uploadData.secure_url);
+      setUploadedFileName(file.name);
 
-      // Auto-generate caption and get the generated captions
-      const captions = await generateCaption(uploadData.secure_url, file.name);
-      const captionToUse = captions?.[platform] || captions?.full || '';
+      // Auto-generate caption but DON'T create post yet
+      await generateCaption(uploadData.secure_url, file.name);
 
+    } catch {
+      alert('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (!pendingImageUrl) return;
+
+    try {
       await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageUrl: uploadData.secure_url,
-          caption: captionToUse,
+          imageUrl: pendingImageUrl,
+          caption: caption,
         }),
       });
 
+      // Reset form
       setCaption('');
       setGeneratedCaptions(null);
       setSelectedCategory('');
@@ -198,11 +214,11 @@ export default function Dashboard() {
       setAiError(null);
       setUploadedImageUrl(null);
       setUploadedFileName(null);
+      setPendingImageUrl(null);
+      setPendingFileName(null);
       fetchPosts();
     } catch {
-      alert('Upload failed');
-    } finally {
-      setUploading(false);
+      alert('Failed to create post');
     }
   };
 
@@ -499,6 +515,17 @@ export default function Dashboard() {
                 disabled={uploading}
               />
             </label>
+
+            {/* Create Post Button - Only show after upload */}
+            {pendingImageUrl && (
+              <button
+                onClick={handleCreatePost}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-medium transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Create Post</span>
+              </button>
+            )}
           </div>
         </div>
 
