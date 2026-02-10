@@ -1,63 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { v2 as cloudinary } from 'cloudinary';
 import exifr from 'exifr';
 
-// Brand-focused hashtag sets
-const HASHTAG_SETS = {
-  general: ['#branding', '#marketing', '#digitalmarketing', '#contentmarketing', '#socialmedia'],
-  tech: ['#tech', '#innovation', '#digital', '#technology', '#future'],
-  lifestyle: ['#lifestyle', '#inspiration', '#motivation', '#success', '#mindset'],
-  business: ['#business', '#entrepreneur', '#startup', '#leadership', '#growth'],
-  creative: ['#creative', '#design', '#art', '#visual', '#aesthetic'],
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Brand-focused templates by category
+const TEMPLATES = {
+  celebration: {
+    telegram: (context: string) => `🎉 ${context}\n\nCelebrating the moment!\n\n#celebration #branding #content`,
+    x: (context: string) => `🎉 ${context}\n\n#celebration #branding #content`,
+    linkedin: (context: string) => `✨ ${context}\n\nCelebrating milestones and moments that matter. What's worth celebrating in your world today?\n\n#celebration #branding #contentmarketing`,
+  },
+  promotion: {
+    telegram: (context: string) => `📢 ${context}\n\nDon't miss out!\n\n#promo #branding #marketing`,
+    x: (context: string) => `📢 ${context}\n\nLimited time! #promo #branding`,
+    linkedin: (context: string) => `📢 ${context}\n\nExciting news to share! Stay tuned for more updates.\n\n#announcement #branding #marketing`,
+  },
+  seasonal: {
+    telegram: (context: string) => `🌟 ${context}\n\nNew month, new beginnings!\n\n#newmonth #seasonal #branding`,
+    x: (context: string) => `🌟 ${context}\n\n#newmonth #goals #branding`,
+    linkedin: (context: string) => `🌟 ${context}\n\nWelcoming new opportunities and fresh starts. What are your goals this month?\n\n#newmonth #professionalgrowth #branding`,
+  },
+  lifestyle: {
+    telegram: (context: string) => `✨ ${context}\n\nLiving the moment!\n\n#lifestyle #branding #content`,
+    x: (context: string) => `✨ ${context}\n\n#lifestyle #moments #branding`,
+    linkedin: (context: string) => `✨ ${context}\n\nFinding balance and inspiration in everyday moments.\n\n#lifestyle #wellness #branding`,
+  },
+  default: {
+    telegram: (context: string) => `✨ ${context}\n\nFresh content drop!\n\n#content #branding #pixeldrop`,
+    x: (context: string) => `✨ ${context}\n\n#content #branding #pixeldrop`,
+    linkedin: (context: string) => `✨ ${context}\n\nQuality content that resonates. What's your take?\n\n#contentmarketing #branding #pixeldrop`,
+  },
 };
 
-// Platform-specific limits
-const LIMITS = {
-  telegram: 4096,
-  x: 280,
-  linkedin: 3000,
-};
-
-function generateHashtags(metadata: Record<string, any>, fileName?: string): string[] {
-  const tags: string[] = [];
-  
-  // Detect category from metadata or filename
-  const text = `${metadata.ImageDescription || ''} ${fileName || ''}`.toLowerCase();
-  
-  if (text.match(/tech|code|app|software|ai|digital/)) {
-    tags.push(...HASHTAG_SETS.tech.slice(0, 3));
-  } else if (text.match(/business|work|office|meeting|professional/)) {
-    tags.push(...HASHTAG_SETS.business.slice(0, 3));
-  } else if (text.match(/design|art|creative|color|photo/)) {
-    tags.push(...HASHTAG_SETS.creative.slice(0, 3));
-  } else if (text.match(/life|style|travel|food|fitness/)) {
-    tags.push(...HASHTAG_SETS.lifestyle.slice(0, 3));
-  } else {
-    tags.push(...HASHTAG_SETS.general.slice(0, 3));
-  }
-  
-  // Always add some engagement hashtags
-  tags.push('#content', '#pixeldrop');
-  
-  return tags;
+// Detect category from text/context
+function detectCategory(text: string): keyof typeof TEMPLATES {
+  const lower = text.toLowerCase();
+  if (lower.match(/new month|february|january|march|april|may|june|july|august|september|october|november|december|new year|holiday|season/)) return 'seasonal';
+  if (lower.match(/celebrate|congrat|happy|joy|party|anniversary/)) return 'celebration';
+  if (lower.match(/sale|promo|discount|offer|deal|launch|announce/)) return 'promotion';
+  if (lower.match(/life|lifestyle|moment|experience|journey/)) return 'lifestyle';
+  return 'default';
 }
 
-function generateSEOKeywords(metadata: Record<string, any>, fileName?: string): string {
-  const keywords: string[] = [];
+// Extract context from filename
+function extractContext(fileName?: string): string {
+  if (!fileName) return 'New visual content';
   
-  if (metadata.Make || metadata.Model) {
-    keywords.push(`${metadata.Make || ''} ${metadata.Model || ''}`.trim());
+  // Remove extension and clean up
+  const clean = fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\d{4}-\d{2}-\d{2}/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Convert to title case
+  return clean.replace(/\b\w/g, (l: string) => l.toUpperCase());
+}
+
+// Analyze image using Cloudinary (if available)
+async function analyzeImage(imageUrl: string): Promise<{ tags: string[]; context: string }> {
+  try {
+    // Extract public ID from Cloudinary URL
+    const match = imageUrl.match(/upload\/(?:v\d+\/)?(.+?)\.[^.]+$/);
+    if (!match) return { tags: [] as string[], context: '' };
+    
+    const publicId = match[1];
+    
+    // Get image details from Cloudinary
+    const result = await cloudinary.api.resource(publicId, {
+      tags: true,
+      context: true,
+    });
+    
+    return {
+      tags: (result.tags || []) as string[],
+      context: result.context?.custom?.caption || '',
+    };
+  } catch {
+    return { tags: [] as string[], context: '' };
   }
-  
-  if (metadata.ImageWidth && metadata.ImageHeight) {
-    keywords.push('high quality', 'professional photography');
-  }
-  
-  if (fileName) {
-    const cleanName = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-    keywords.push(cleanName);
-  }
-  
-  return keywords.join(', ');
 }
 
 export async function POST(req: NextRequest) {
@@ -70,109 +98,84 @@ export async function POST(req: NextRequest) {
     }
 
     let metadata: Record<string, any> = {};
+  let cloudinaryData: { tags: string[]; context: string } = { tags: [], context: '' };
 
-    // Try to extract EXIF data
+    // Try to get EXIF data
     try {
-      metadata = await exifr.parse(imageUrl, {
-        exif: true,
-        gps: true,
-        iptc: true,
-      }) || {};
+      metadata = await exifr.parse(imageUrl, { exif: true, gps: true }) || {};
     } catch {
-      // Ignore EXIF errors
+      // Ignore
     }
 
-    const hashtags = generateHashtags(metadata, fileName);
-    const seoKeywords = generateSEOKeywords(metadata, fileName);
+    // Try to get Cloudinary tags/context
+    try {
+      cloudinaryData = await analyzeImage(imageUrl);
+    } catch {
+      // Ignore
+    }
+
+    // Build context from all sources
+    const fileContext = extractContext(fileName);
+    const detectedCategory = detectCategory(fileContext + ' ' + cloudinaryData.tags.join(' '));
+    const templates = TEMPLATES[detectedCategory];
     
-    // Build base content elements
-    const date = metadata.DateTimeOriginal || metadata.CreateDate 
-      ? new Date(metadata.DateTimeOriginal || metadata.CreateDate).toLocaleDateString('en-US', { 
-          month: 'long', 
-          day: 'numeric',
-          year: 'numeric'
-        })
-      : null;
+    // Get date if available
+    const date = metadata.DateTimeOriginal 
+      ? new Date(metadata.DateTimeOriginal).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+      : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     
-    const camera = metadata.Make || metadata.Model 
-      ? `Shot on ${[metadata.Make, metadata.Model].filter(Boolean).join(' ')}`
-      : null;
+    // Build context string
+    let mainContext = fileContext;
+    if (cloudinaryData.context) {
+      mainContext = cloudinaryData.context;
+    }
     
-    const location = metadata.latitude && metadata.longitude
-      ? `📍 Location: ${metadata.latitude.toFixed(4)}, ${metadata.longitude.toFixed(4)}`
-      : null;
+    // Add date for seasonal content
+    if (detectedCategory === 'seasonal') {
+      mainContext = `${mainContext} - ${date}`;
+    }
 
     // Generate platform-specific captions
-    const captions: Record<string, string> = {};
-    
-    // TELEGRAM (Full version)
-    const telegramParts: string[] = [];
-    if (date) telegramParts.push(`📅 ${date}`);
-    telegramParts.push('✨ New content drop!');
-    if (camera) telegramParts.push(camera);
-    if (location) telegramParts.push(location);
-    telegramParts.push('', ...hashtags);
-    captions.telegram = telegramParts.join('\n');
+    const captions: Record<string, string> = {
+      full: templates.telegram(mainContext),
+      telegram: templates.telegram(mainContext),
+      x: templates.x(mainContext),
+      linkedin: templates.linkedin(mainContext),
+    };
 
-    // X (Twitter) - Short, punchy
-    const xParts: string[] = [];
-    xParts.push('✨ Fresh drop!');
-    if (camera) xParts.push(camera);
-    xParts.push(hashtags.slice(0, 2).join(' '));
-    let xCaption = xParts.join('\n\n');
-    // Ensure under 280 chars
-    if (xCaption.length > 250) {
-      xCaption = `✨ Fresh content!\n\n${hashtags.slice(0, 2).join(' ')}`;
-    }
-    captions.x = xCaption;
+    // SEO keywords
+    const seoKeywords = [
+      detectedCategory,
+      'branding',
+      'content',
+      fileContext.toLowerCase().split(' ').slice(0, 3).join(', '),
+    ].join(', ');
 
-    // LINKEDIN - Professional, longer
-    const linkedinParts: string[] = [];
-    linkedinParts.push('✨ New visual content ready to share!');
-    linkedinParts.push('');
-    if (date) linkedinParts.push(`Captured on ${date}`);
-    if (camera) linkedinParts.push(camera);
-    linkedinParts.push('');
-    linkedinParts.push('Quality content drives engagement. What do you think? 👇');
-    linkedinParts.push('');
-    linkedinParts.push(hashtags.join(' '));
-    captions.linkedin = linkedinParts.join('\n');
-
-    // Default/FULL version
-    captions.full = captions.telegram;
-
-    // Clean filename for alt text
-    const altText = fileName
-      ? fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
-      : 'Visual content';
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       captions,
       activePlatform: platform === 'all' ? 'full' : platform,
       metadata: {
+        category: detectedCategory,
         hasExif: Object.keys(metadata).length > 0,
-        camera: camera,
-        date: date,
-        location: location,
+        camera: metadata.Make ? `${metadata.Make} ${metadata.Model || ''}` : null,
+        date,
         seoKeywords,
+        cloudinaryTags: cloudinaryData.tags,
       },
-      altText,
     });
   } catch (error) {
-    console.error('Caption generation error:', error);
+    console.error('Caption error:', error);
     
-    // Fallback captions
-    const fallbackHashtags = '#content #marketing #branding #pixeldrop';
-    return NextResponse.json({ 
+    const fallback = 'Fresh content drop!';
+    return NextResponse.json({
       captions: {
-        full: `✨ New content drop!\n\n${fallbackHashtags}`,
-        telegram: `✨ New content drop!\n\n${fallbackHashtags}`,
-        x: `✨ Fresh drop!\n\n#content #pixeldrop`,
-        linkedin: `✨ New visual content ready to share!\n\nQuality content drives engagement. What do you think? 👇\n\n${fallbackHashtags}`,
+        full: `✨ ${fallback}\n\n#content #branding`,
+        telegram: `✨ ${fallback}\n\n#content #branding`,
+        x: `✨ ${fallback}\n\n#content #branding`,
+        linkedin: `✨ ${fallback}\n\nQuality content that resonates.\n\n#content #branding`,
       },
       activePlatform: 'full',
-      metadata: { hasExif: false, seoKeywords: 'content, marketing, branding' },
-      altText: 'Visual content',
+      metadata: { category: 'default', seoKeywords: 'content, branding' },
     });
   }
 }
