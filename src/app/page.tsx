@@ -14,7 +14,8 @@ import {
   Play,
   CheckSquare,
   Square,
-  X
+  X,
+  Wand2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -38,6 +39,9 @@ export default function Dashboard() {
   const [selectMode, setSelectMode] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkPosting, setBulkPosting] = useState(false);
+  const [generatingCaption, setGeneratingCaption] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   const handleBulkPost = async () => {
     if (selectedPosts.size === 0) return;
@@ -87,11 +91,32 @@ export default function Dashboard() {
     fetchPosts();
   }, []);
 
+  const generateCaption = async (imageUrl: string, fileName?: string) => {
+    setGeneratingCaption(true);
+    try {
+      const res = await fetch('/api/caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl, fileName }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setCaption(data.caption);
+      }
+    } catch {
+      // Ignore errors, user can type manually
+    } finally {
+      setGeneratingCaption(false);
+    }
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
+    setUploadedFileName(file.name);
 
     try {
       const formData = new FormData();
@@ -105,6 +130,10 @@ export default function Dashboard() {
       if (!uploadRes.ok) throw new Error('Upload failed');
       
       const uploadData = await uploadRes.json();
+      setUploadedImageUrl(uploadData.secure_url);
+
+      // Auto-generate caption
+      await generateCaption(uploadData.secure_url, file.name);
 
       await fetch('/api/posts', {
         method: 'POST',
@@ -116,6 +145,8 @@ export default function Dashboard() {
       });
 
       setCaption('');
+      setUploadedImageUrl(null);
+      setUploadedFileName(null);
       fetchPosts();
     } catch {
       alert('Upload failed');
@@ -280,13 +311,29 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Write a caption for your post..."
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors resize-none text-sm"
-              rows={2}
-            />
+            <div className="relative">
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Write a caption for your post... (or upload image to auto-generate)"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors resize-none text-sm"
+                rows={3}
+              />
+              {uploadedImageUrl && (
+                <button
+                  onClick={() => generateCaption(uploadedImageUrl, uploadedFileName || undefined)}
+                  disabled={generatingCaption}
+                  className="absolute bottom-3 right-3 p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors disabled:opacity-50"
+                  title="Regenerate caption"
+                >
+                  {generatingCaption ? (
+                    <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4 text-emerald-400" />
+                  )}
+                </button>
+              )}
+            </div>
 
             <label className={`
               flex items-center justify-center gap-3 px-6 py-4 rounded-xl border-2 border-dashed
