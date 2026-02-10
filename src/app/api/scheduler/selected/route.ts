@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
     // Get config
     const dbConfig = await prisma.config.findFirst();
     const botToken = dbConfig?.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN;
-    const channelId = dbConfig?.telegramChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
+    // Treat empty string as null/undefined
+    const dbChannelId = dbConfig?.telegramChannelId?.trim();
+    const channelId = dbChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
     
     if (!botToken) {
       return NextResponse.json({ error: 'Telegram bot token not configured' }, { status: 400 });

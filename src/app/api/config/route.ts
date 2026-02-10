@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
     const config = await prisma.config.findFirst();
     
     const botToken = config?.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || '';
-    // Default to user's Telegram ID if no channel configured
-    const channelId = config?.telegramChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
+    // Treat empty string as null/undefined and use default
+    const dbChannelId = config?.telegramChannelId?.trim();
+    const channelId = dbChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
     
     if (includeSecret) {
       // Return full token for server-side testing

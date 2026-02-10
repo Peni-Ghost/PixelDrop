@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
     let chatId = providedChatId;
     if (!chatId) {
       const dbConfig = await prisma.config.findFirst();
-      chatId = dbConfig?.telegramChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
+      // Treat empty string as null/undefined
+      const dbChannelId = dbConfig?.telegramChannelId?.trim();
+      chatId = dbChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
     }
 
     if (!botToken) {
