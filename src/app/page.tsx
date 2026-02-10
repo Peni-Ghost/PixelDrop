@@ -94,10 +94,33 @@ export default function Dashboard() {
   }, []);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [aiMode, setAiMode] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<{context: string; tone: string} | null>(null);
 
-  const generateCaption = async (imageUrl: string, fileName?: string, category?: string) => {
+  const generateCaption = async (imageUrl: string, fileName?: string, category?: string, useAi = false) => {
     setGeneratingCaption(true);
     try {
+      // Use AI Vision if enabled
+      if (useAi || aiMode) {
+        const res = await fetch('/api/caption/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl, platform }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setGeneratedCaptions(data.captions);
+          const activeCaption = data.captions[data.activePlatform] || data.captions.full;
+          setCaption(activeCaption);
+          if (data.analysis) {
+            setAiAnalysis(data.analysis);
+          }
+          return data.captions;
+        }
+      }
+
+      // Fallback to template-based
       const res = await fetch('/api/caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -117,6 +140,7 @@ export default function Dashboard() {
         if (data.metadata?.category) {
           setSelectedCategory(data.metadata.category);
         }
+        setAiAnalysis(null);
         return data.captions;
       }
     } catch {
@@ -164,6 +188,7 @@ export default function Dashboard() {
       setCaption('');
       setGeneratedCaptions(null);
       setSelectedCategory('');
+      setAiAnalysis(null);
       setUploadedImageUrl(null);
       setUploadedFileName(null);
       fetchPosts();
@@ -330,8 +355,41 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
+            {/* AI Mode Toggle */}
+            {uploadedImageUrl && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setAiMode(!aiMode);
+                    if (!aiMode) {
+                      generateCaption(uploadedImageUrl, uploadedFileName || undefined, undefined, true);
+                    } else {
+                      generateCaption(uploadedImageUrl, uploadedFileName || undefined, selectedCategory || undefined, false);
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    aiMode
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  {generatingCaption ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-3 h-3" />
+                  )}
+                  {aiMode ? '✨ AI Vision ON' : 'Use AI Vision'}
+                </button>
+                {aiAnalysis && (
+                  <span className="text-xs text-slate-500">
+                    Detected: {aiAnalysis.context} ({aiAnalysis.tone})
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Category Selector */}
-            {generatedCaptions && (
+            {generatedCaptions && !aiMode && (
               <div className="flex gap-2 flex-wrap">
                 <span className="text-xs text-slate-500 self-center mr-2">Template:</span>
                 {(['product', 'promotion', 'engagement', 'seasonal', 'milestone', 'educational'] as const).map((cat) => (
