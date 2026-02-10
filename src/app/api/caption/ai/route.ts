@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = process.env.OPENAI_API_KEY 
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Free tier: 1,500 requests/day
+const genAI = process.env.GEMINI_API_KEY 
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
 // Platform-specific formats
 const PLATFORM_FORMATS = {
-  telegram: (content: string) => {
-    return `${content}\n\n#branding #content`;
-  },
+  telegram: (content: string) => `${content}\n\n#branding #content`,
   x: (content: string) => {
-    // Keep it under 280 chars
     const maxLen = 250;
     let text = content;
     if (text.length > maxLen) {
@@ -19,12 +17,9 @@ const PLATFORM_FORMATS = {
     }
     return `${text}\n\n#branding`;
   },
-  linkedin: (content: string) => {
-    return `${content}\n\nWhat do you think? Share your thoughts below! 👇\n\n#branding #contentmarketing #strategy`;
-  },
-  full: (content: string) => {
-    return `${content}\n\n#branding #content`;
-  },
+  linkedin: (content: string) => 
+    `${content}\n\nWhat do you think? Share your thoughts below! 👇\n\n#branding #contentmarketing`,
+  full: (content: string) => `${content}\n\n#branding #content`,
 };
 
 export async function POST(req: NextRequest) {
@@ -36,9 +31,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image URL required' }, { status: 400 });
     }
 
-    if (!openai) {
+    if (!genAI) {
       return NextResponse.json({ 
-        error: 'OpenAI API key not configured',
+        error: 'Gemini API key not configured',
         captions: {
           full: '✨ Fresh content drop!\n\n#branding #content',
           telegram: '✨ Fresh content drop!\n\n#branding #content',
@@ -49,62 +44,77 @@ export async function POST(req: NextRequest) {
       }, { status: 200 });
     }
 
-    // Use GPT-4 Vision to analyze the image
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',  // Vision-capable model
-      messages: [
-        {
-          role: 'system',
-          content: `You are a brand social media expert. Analyze images and create engaging, contextual captions.
+    // Fetch the image as base64
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error('Failed to fetch image');
+    }
+    
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    
+    // Get MIME type from response
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
-Analyze the image for:
-1. Text visible in the image (signs, banners, overlays)
-2. Visual theme (business, tech, celebration, seasonal, etc.)
-3. Colors and mood
-4. Objects and people
-5. Any calls-to-action or messaging
+    // Use Gemini Pro Vision
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-Create captions that:
-- Reference the actual content of the image
-- Include the tone (professional, celebratory, urgent, etc.)
-- Match the visual theme
-- Include relevant hashtags
+    const prompt = `Analyze this image and create a brand-appropriate social media caption.
 
-Respond with a JSON object containing:
+Look for:
+1. Any text visible in the image (signs, banners, headlines)
+2. The theme (celebration, business, tech, seasonal, etc.)
+3. Mood and colors
+4. Any calls-to-action
+
+Create a caption that:
+- References the actual content shown
+- Matches the visual tone
+- Is engaging for social media
+- Includes relevant hashtags
+
+Respond with ONLY a JSON object like this:
 {
-  "context": "Brief description of what's in the image",
-  "tone": "celebratory|professional|urgent|inspirational",
-  "mainCaption": "The primary caption text (1-2 sentences)",
-  "cta": "Optional call-to-action"
-}`
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Analyze this image and create a brand-appropriate caption. Focus on any text visible in the image and the overall theme.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageUrl
-              }
+  "context": "brief description of image content",
+  "tone": "celebratory/professional/urgent/etc",
+  "mainCaption": "the main caption text (1-2 sentences)",
+  "cta": "optional call to action"
+}`;
+
+    const result = await model.generateContent({
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: prompt },
+          { 
+            inlineData: {
+              mimeType: contentType,
+              data: base64Image
             }
-          ]
-        }
-      ],
-      max_tokens: 500,
-      response_format: { type: 'json_object' }
+          }
+        ]
+      }]
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response from OpenAI');
+    const response = await result.response;
+    const text = response.text();
+    
+    // Parse the JSON response
+    let analysis;
+    try {
+      // Extract JSON from the response (Gemini might wrap it in markdown)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
+    } catch {
+      // Fallback if JSON parsing fails
+      analysis = {
+        context: 'Brand content',
+        tone: 'professional',
+        mainCaption: text.substring(0, 200),
+        cta: ''
+      };
     }
 
-    const analysis = JSON.parse(content);
-    
     // Build the base caption
     let baseCaption = analysis.mainCaption;
     if (analysis.cta) {
@@ -127,12 +137,12 @@ Respond with a JSON object containing:
         tone: analysis.tone,
       },
       aiGenerated: true,
+      provider: 'gemini',
     });
 
   } catch (error) {
-    console.error('AI Vision error:', error);
+    console.error('Gemini Vision error:', error);
     
-    // Fallback to generic captions
     return NextResponse.json({
       captions: {
         full: '✨ Fresh content drop!\n\n#branding #content #pixeldrop',

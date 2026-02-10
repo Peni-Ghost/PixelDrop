@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@netlify/functions": "^2.8.2",
     "@prisma/client": "^5.11.0",
     "autoprefixer": "^10.4.24",
