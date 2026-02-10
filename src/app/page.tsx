@@ -93,7 +93,7 @@ export default function Dashboard() {
     fetchPosts();
   }, []);
 
-  const generateCaption = async (imageUrl: string, fileName?: string, selectedPlatform?: string) => {
+  const generateCaption = async (imageUrl: string, fileName?: string, selectedPlatform?: string): Promise<Record<string, string> | null> => {
     setGeneratingCaption(true);
     try {
       const res = await fetch('/api/caption', {
@@ -105,13 +105,16 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setGeneratedCaptions(data.captions);
-        setCaption(data.captions[data.activePlatform] || data.captions.full);
+        const activeCaption = data.captions[data.activePlatform] || data.captions.full;
+        setCaption(activeCaption);
+        return data.captions;
       }
     } catch {
       // Ignore errors
     } finally {
       setGeneratingCaption(false);
     }
+    return null;
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,15 +138,16 @@ export default function Dashboard() {
       const uploadData = await uploadRes.json();
       setUploadedImageUrl(uploadData.secure_url);
 
-      // Auto-generate caption
-      await generateCaption(uploadData.secure_url, file.name);
+      // Auto-generate caption and get the generated captions
+      const captions = await generateCaption(uploadData.secure_url, file.name);
+      const captionToUse = captions?.[platform] || captions?.full || '';
 
       await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageUrl: uploadData.secure_url,
-          caption: caption,
+          caption: captionToUse,
         }),
       });
 
