@@ -97,6 +97,7 @@ export default function Dashboard() {
   const [aiMode, setAiMode] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<{context: string; tone: string} | null>(null);
   const [aiGenerated, setAiGenerated] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const generateCaption = async (imageUrl: string, fileName?: string, category?: string, useAi = false) => {
     setGeneratingCaption(true);
@@ -115,12 +116,9 @@ export default function Dashboard() {
           const activeCaption = data.captions[data.activePlatform] || data.captions.full;
           setCaption(activeCaption);
           setAiGenerated(data.aiGenerated || false);
+          setAiError(data.error || null);
           if (data.analysis) {
             setAiAnalysis(data.analysis);
-          }
-          // Check if AI actually worked or fell back
-          if (!data.aiGenerated) {
-            console.log('AI fallback:', data.error || 'Unknown error');
           }
           return data.captions;
         }
@@ -197,6 +195,7 @@ export default function Dashboard() {
       setSelectedCategory('');
       setAiAnalysis(null);
       setAiGenerated(false);
+      setAiError(null);
       setUploadedImageUrl(null);
       setUploadedFileName(null);
       fetchPosts();
@@ -395,7 +394,7 @@ export default function Dashboard() {
                 )}
                 {aiMode && !aiGenerated && generatedCaptions && (
                   <span className="text-xs text-amber-500">
-                    ⚠ AI failed - using template fallback
+                    ⚠ AI failed{aiError ? `: ${aiError}` : ' - using template fallback'}
                   </span>
                 )}
               </div>
