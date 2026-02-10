@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
     // Get MIME type from response
     const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
-    // Use Gemini Pro Vision
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    // Use Gemini 1.5 Flash (higher free tier limits)
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `Analyze this image and create a brand-appropriate social media caption.
 
@@ -155,6 +155,10 @@ Respond with ONLY a JSON object like this:
   } catch (error) {
     console.error('Gemini Vision error:', error);
     
+    // Check if it's a rate limit error
+    const errorMessage = error instanceof Error ? error.message : 'AI analysis failed';
+    const isRateLimit = errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('exceeded');
+    
     return NextResponse.json({
       captions: {
         full: '✨ Fresh content drop!\n\n#branding #content #pixeldrop',
@@ -164,7 +168,7 @@ Respond with ONLY a JSON object like this:
       },
       activePlatform: 'full',
       aiGenerated: false,
-      error: error instanceof Error ? error.message : 'AI analysis failed',
+      error: isRateLimit ? 'Rate limit exceeded. Try again in 1 minute or use template mode.' : errorMessage,
     });
   }
 }
