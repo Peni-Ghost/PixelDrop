@@ -42,6 +42,8 @@ export default function Dashboard() {
   const [generatingCaption, setGeneratingCaption] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<'telegram' | 'x' | 'linkedin' | 'full'>('full');
+  const [generatedCaptions, setGeneratedCaptions] = useState<Record<string, string> | null>(null);
 
   const handleBulkPost = async () => {
     if (selectedPosts.size === 0) return;
@@ -91,21 +93,22 @@ export default function Dashboard() {
     fetchPosts();
   }, []);
 
-  const generateCaption = async (imageUrl: string, fileName?: string) => {
+  const generateCaption = async (imageUrl: string, fileName?: string, selectedPlatform?: string) => {
     setGeneratingCaption(true);
     try {
       const res = await fetch('/api/caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl, fileName }),
+        body: JSON.stringify({ imageUrl, fileName, platform: selectedPlatform || platform }),
       });
-      
+
       if (res.ok) {
         const data = await res.json();
-        setCaption(data.caption);
+        setGeneratedCaptions(data.captions);
+        setCaption(data.captions[data.activePlatform] || data.captions.full);
       }
     } catch {
-      // Ignore errors, user can type manually
+      // Ignore errors
     } finally {
       setGeneratingCaption(false);
     }
@@ -145,6 +148,7 @@ export default function Dashboard() {
       });
 
       setCaption('');
+      setGeneratedCaptions(null);
       setUploadedImageUrl(null);
       setUploadedFileName(null);
       fetchPosts();
@@ -311,13 +315,36 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
+            {/* Platform Selector */}
+            {generatedCaptions && (
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-xs text-slate-500 self-center mr-2">Platform:</span>
+                {(['full', 'telegram', 'x', 'linkedin'] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => {
+                      setPlatform(p);
+                      setCaption(generatedCaptions[p] || generatedCaptions.full);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      platform === p
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                    }`}
+                  >
+                    {p === 'x' ? 'X (Twitter)' : p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="relative">
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                placeholder="Write a caption for your post... (or upload image to auto-generate)"
+                placeholder="Write a caption for your post... (or upload image to auto-generate SEO-optimized captions)"
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors resize-none text-sm"
-                rows={3}
+                rows={4}
               />
               {uploadedImageUrl && (
                 <button
@@ -514,12 +541,12 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {/* Single Delete Button */}
+                    {/* Single Delete Button - Always visible on mobile, hover on desktop */}
                     {!selectMode && (
                       <button
                         onClick={() => handleDelete(post.id)}
                         disabled={deleting === post.id}
-                        className="absolute top-3 right-3 p-2 rounded-lg bg-slate-950/80 hover:bg-red-500/20 border border-slate-700 hover:border-red-500/50 transition-colors opacity-0 group-hover:opacity-100"
+                        className="absolute top-3 right-3 p-2 rounded-lg bg-slate-950/80 hover:bg-red-500/20 border border-slate-700 hover:border-red-500/50 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                       >
                         {deleting === post.id ? (
                           <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
