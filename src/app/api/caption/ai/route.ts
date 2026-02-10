@@ -99,18 +99,30 @@ Respond with ONLY a JSON object like this:
     const response = await result.response;
     const text = response.text();
     
+    console.log('Gemini raw response:', text.substring(0, 500));
+    
     // Parse the JSON response
     let analysis;
     try {
-      // Extract JSON from the response (Gemini might wrap it in markdown)
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(text);
-    } catch {
-      // Fallback if JSON parsing fails
+      // Try to extract JSON if wrapped in markdown
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       text.match(/```\s*([\s\S]*?)\s*```/) ||
+                       text.match(/(\{[\s\S]*\})/);
+      
+      const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : text;
+      analysis = JSON.parse(jsonString);
+      
+      // Validate required fields
+      if (!analysis.mainCaption) {
+        throw new Error('Missing mainCaption in response');
+      }
+    } catch (parseError) {
+      console.log('JSON parse error, using text fallback:', parseError);
+      // Use the raw text as caption if JSON parsing fails
       analysis = {
-        context: 'Brand content',
+        context: 'Image analysis',
         tone: 'professional',
-        mainCaption: text.substring(0, 200),
+        mainCaption: text.replace(/```[\s\S]*?```/g, '').trim().substring(0, 300),
         cta: ''
       };
     }
