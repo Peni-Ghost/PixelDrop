@@ -94,7 +94,7 @@ export default function Dashboard() {
   }, []);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [aiMode, setAiMode] = useState(false);
+  const [aiMode, setAiMode] = useState(false); // Disabled by default due to rate limits
   const [aiAnalysis, setAiAnalysis] = useState<{context: string; tone: string} | null>(null);
   const [aiGenerated, setAiGenerated] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -393,7 +393,7 @@ export default function Dashboard() {
                   ) : (
                     <Wand2 className="w-3 h-3" />
                   )}
-                  {aiMode ? '✨ AI Vision ON' : 'Use AI Vision'}
+                  {aiMode ? '✨ AI Vision ON' : 'Use AI Vision (Beta - may hit limits)'}
                 </button>
                 {aiAnalysis && aiGenerated && (
                   <span className="text-xs text-emerald-500">
