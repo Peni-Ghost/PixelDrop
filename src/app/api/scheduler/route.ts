@@ -30,6 +30,11 @@ export async function POST(req: NextRequest) {
     const botToken = dbConfig?.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN;
     const channelId = dbConfig?.telegramChannelId || process.env.TELEGRAM_CHANNEL_ID || '5987629480';
     
+    // Debug logging
+    console.log('DEBUG - DB Config:', dbConfig);
+    console.log('DEBUG - Using channelId:', channelId);
+    console.log('DEBUG - Using botToken:', botToken ? 'Set (hidden)' : 'Not set');
+    
     if (!botToken) {
       return NextResponse.json({ error: 'Telegram bot token not configured' }, { status: 400 });
     }
@@ -76,6 +81,7 @@ export async function POST(req: NextRequest) {
       success: true, 
       posted: results.success.length,
       failed: results.failed.length,
+      debug: { channelIdUsed: channelId },
       results 
     });
   } catch (error) {
