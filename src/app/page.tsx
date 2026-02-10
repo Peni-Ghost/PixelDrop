@@ -96,6 +96,7 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [aiMode, setAiMode] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<{context: string; tone: string} | null>(null);
+  const [aiGenerated, setAiGenerated] = useState(false);
 
   const generateCaption = async (imageUrl: string, fileName?: string, category?: string, useAi = false) => {
     setGeneratingCaption(true);
@@ -113,8 +114,13 @@ export default function Dashboard() {
           setGeneratedCaptions(data.captions);
           const activeCaption = data.captions[data.activePlatform] || data.captions.full;
           setCaption(activeCaption);
+          setAiGenerated(data.aiGenerated || false);
           if (data.analysis) {
             setAiAnalysis(data.analysis);
+          }
+          // Check if AI actually worked or fell back
+          if (!data.aiGenerated) {
+            console.log('AI fallback:', data.error || 'Unknown error');
           }
           return data.captions;
         }
@@ -137,6 +143,7 @@ export default function Dashboard() {
         setGeneratedCaptions(data.captions);
         const activeCaption = data.captions[data.activePlatform] || data.captions.full;
         setCaption(activeCaption);
+        setAiGenerated(false);
         if (data.metadata?.category) {
           setSelectedCategory(data.metadata.category);
         }
@@ -189,6 +196,7 @@ export default function Dashboard() {
       setGeneratedCaptions(null);
       setSelectedCategory('');
       setAiAnalysis(null);
+      setAiGenerated(false);
       setUploadedImageUrl(null);
       setUploadedFileName(null);
       fetchPosts();
@@ -380,9 +388,14 @@ export default function Dashboard() {
                   )}
                   {aiMode ? '✨ AI Vision ON' : 'Use AI Vision'}
                 </button>
-                {aiAnalysis && (
-                  <span className="text-xs text-slate-500">
-                    Detected: {aiAnalysis.context} ({aiAnalysis.tone})
+                {aiAnalysis && aiGenerated && (
+                  <span className="text-xs text-emerald-500">
+                    ✓ AI detected: {aiAnalysis.context}
+                  </span>
+                )}
+                {aiMode && !aiGenerated && generatedCaptions && (
+                  <span className="text-xs text-amber-500">
+                    ⚠ AI failed - using template fallback
                   </span>
                 )}
               </div>
