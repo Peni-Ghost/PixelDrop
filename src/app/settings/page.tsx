@@ -147,17 +147,17 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-2">
-                Channel ID
+                Channel ID <span className="text-slate-600">(optional)</span>
               </label>
               <input
                 type="text"
                 value={channelId}
                 onChange={(e) => setChannelId(e.target.value)}
-                placeholder="@channelname or -1001234567890"
+                placeholder="5987629480"
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-sm"
               />
-              <p className="text-xs text-slate-600 mt-2">
-                Defaults to admin Telegram ID if not set. Users can override with their own channel.
+              <p className="text-xs text-slate-500 mt-2">
+                <span className="text-emerald-500">✓ Default: 5987629480 (admin)</span> — Leave empty to use default, or enter your own (@channel or numeric ID)
               </p>
             </div>
 

@@ -294,7 +294,7 @@ export default function Dashboard() {
               ) : (
                 <Play className="w-4 h-4" />
               )}
-              <span className="text-sm">Post Now</span>
+              <span className="text-sm">Post All ({stats.pending})</span>
             </button>
             
             <button
