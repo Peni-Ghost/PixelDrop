@@ -223,9 +223,9 @@ export default function SettingsPage() {
           <ol className="space-y-3 text-sm text-slate-400 list-decimal list-inside">
             <li>Message @BotFather on Telegram and create a new bot (/newbot)</li>
             <li>Copy the bot token and paste it above</li>
-            <li>Create a Telegram channel (or use existing one)</li>
-            <li>Add your bot as an administrator to the channel</li>
-            <li>Enter the channel ID (@channelname or numeric ID)</li>
+            <li><strong className="text-slate-300">Important:</strong> Find your bot in Telegram and click <strong className="text-emerald-400">START</strong></li>
+            <li>Leave Channel ID empty to post to your DMs, or enter a channel ID</li>
+            <li>If using a channel: Add bot as admin, then enter @channelname</li>
             <li>Click "Test Connection" to verify everything works</li>
           </ol>
         </div>

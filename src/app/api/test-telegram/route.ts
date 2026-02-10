@@ -51,12 +51,23 @@ export async function POST(req: NextRequest) {
       if (chatData.ok) {
         return NextResponse.json({ 
           success: true, 
-          message: `Connected as @${data.result.username}. Can access channel: ${chatData.result.title || chatId}` 
+          message: `Connected as @${data.result.username}. Can access: ${chatData.result.title || chatId}` 
         });
       } else {
+        // Check if it's a "chat not found" error (user hasn't started bot)
+        const isUserId = /^\d+$/.test(chatId);
+        const isChatNotFound = chatData.description?.includes('chat not found') || chatData.description?.includes('user not found');
+        
+        if (isUserId && isChatNotFound) {
+          return NextResponse.json({ 
+            success: true, 
+            message: `Connected as @${data.result.username}. ⚠️ You need to START the bot first! Open @${data.result.username} in Telegram and click START.` 
+          });
+        }
+        
         return NextResponse.json({ 
           success: true, 
-          message: `Connected as @${data.result.username}. Warning: Cannot access channel - ${chatData.description}` 
+          message: `Connected as @${data.result.username}. Warning: Cannot access - ${chatData.description}` 
         });
       }
     } catch {
