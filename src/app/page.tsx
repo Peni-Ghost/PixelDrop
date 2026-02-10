@@ -37,6 +37,40 @@ export default function Dashboard() {
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkPosting, setBulkPosting] = useState(false);
+
+  const handleBulkPost = async () => {
+    if (selectedPosts.size === 0) return;
+    if (!confirm(`Post ${selectedPosts.size} selected images?`)) return;
+
+    setBulkPosting(true);
+    try {
+      const res = await fetch('/api/scheduler/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedPosts) }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        if (data.failed > 0) {
+          alert(`Posted ${data.posted} images, ${data.failed} failed.`);
+        } else {
+          alert(`Successfully posted ${data.posted} image${data.posted !== 1 ? 's' : ''}!`);
+        }
+        setSelectedPosts(new Set());
+        setSelectMode(false);
+        fetchPosts();
+      } else {
+        alert(data.error || 'Failed to post');
+      }
+    } catch {
+      alert('Failed to post - network error');
+    } finally {
+      setBulkPosting(false);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -194,6 +228,7 @@ export default function Dashboard() {
   };
 
   const allSelected = posts.length > 0 && selectedPosts.size === posts.length;
+  const selectedPendingCount = posts.filter(p => selectedPosts.has(p.id) && p.status === 'PENDING').length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -325,6 +360,20 @@ export default function Dashboard() {
             </span>
 
             <div className="ml-auto flex gap-3">
+              {selectedPosts.size > 0 && selectedPendingCount > 0 && (
+                <button
+                  onClick={handleBulkPost}
+                  disabled={bulkPosting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 transition-colors disabled:opacity-50"
+                >
+                  {bulkPosting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">Post ({selectedPendingCount})</span>
+                </button>
+              )}
               {selectedPosts.size > 0 && (
                 <button
                   onClick={handleBulkDelete}
